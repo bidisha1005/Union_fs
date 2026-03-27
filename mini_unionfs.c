@@ -26,31 +26,11 @@ struct mini_unionfs_state {
 /* ============================================================
    HELPER: build_path
    ============================================================ */
-static void build_path(char *out, size_t sz, const char *base, const char *path)
-{
-    snprintf(out, sz, "%s%s", base, path);
-}
 
 /* ============================================================
    HELPER: build_whiteout_path
    /dir/file.txt  ->  upper_dir/dir/.wh.file.txt
    ============================================================ */
-static void build_whiteout_path(char *out, size_t sz, const char *path)
-{
-    char tmp[4096];
-    snprintf(tmp, sizeof(tmp), "%s", path);
-
-    char *slash = strrchr(tmp, '/');
-    if (!slash || slash == tmp) {
-        /* root-level file: path = "/filename" */
-        const char *fname = (slash == tmp) ? slash + 1 : path;
-        snprintf(out, sz, "%s/.wh.%s", STATE->upper_dir, fname);
-    } else {
-        char *fname = slash + 1;
-        *slash = '\0';              /* tmp is now the directory part */
-        snprintf(out, sz, "%s%s/.wh.%s", STATE->upper_dir, tmp, fname);
-    }
-}
 
 /* ============================================================
    HELPER: resolve_path
@@ -58,48 +38,12 @@ static void build_whiteout_path(char *out, size_t sz, const char *path)
              0 = found in lower
             -ENOENT = whiteout'd or missing
    ============================================================ */
-static int resolve_path(const char *path, char *out_path)
-{
-    char wh[4096], upper[4096], lower[4096];
 
-    /* 1. Whiteout check */
-    build_whiteout_path(wh, sizeof(wh), path);
-    if (access(wh, F_OK) == 0)
-        return -ENOENT;
-
-    /* 2. Upper layer */
-    build_path(upper, sizeof(upper), STATE->upper_dir, path);
-    if (access(upper, F_OK) == 0) {
-        strncpy(out_path, upper, 4096);
-        return 1;
-    }
-
-    /* 3. Lower layer */
-    build_path(lower, sizeof(lower), STATE->lower_dir, path);
-    if (access(lower, F_OK) == 0) {
-        strncpy(out_path, lower, 4096);
-        return 0;
-    }
-
-    return -ENOENT;
-}
 
 /* ============================================================
    HELPER: mkdir_p  — create all parent dirs in a path
    ============================================================ */
-static void mkdir_p(const char *path)
-{
-    char tmp[4096];
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    for (char *p = tmp + 1; *p; p++) {
-        if (*p == '/') {
-            *p = '\0';
-            mkdir(tmp, 0755);
-            *p = '/';
-        }
-    }
-    mkdir(tmp, 0755);
-}
+
 
 /* ============================================================
    HELPER: copy_file_to_upper  — Copy-on-Write
@@ -366,21 +310,6 @@ static int unionfs_rmdir(const char *path)
 /* ============================================================
    FUSE: truncate  — FUSE3 signature has fuse_file_info*
    ============================================================ */
-static int unionfs_truncate(const char *path, off_t size,
-                             struct fuse_file_info *fi)
-{
-    (void)fi;
-    char upper[4096];
-    build_path(upper, sizeof(upper), STATE->upper_dir, path);
-
-    if (access(upper, F_OK) != 0) {
-        int r = copy_file_to_upper(path);
-        if (r < 0) return r;
-    }
-
-    if (truncate(upper, size) < 0) return -errno;
-    return 0;
-}
 
 /* ============================================================
    FUSE OPERATIONS TABLE
