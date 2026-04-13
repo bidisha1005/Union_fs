@@ -90,3 +90,58 @@ grep -q "modified" "$MNT/a.txt" && res="ok"
 check "$res" "write correctness"
 echo ""
 echo "Partial Results: $PASS passed, $FAIL failed"
+
+# -------- Test 7: create --------
+echo "newfile" > "$MNT/new.txt"
+sleep 0.5
+
+res="fail"
+[ -f "$UPPER/new.txt" ] && \
+grep -q "newfile" "$MNT/new.txt" && res="ok"
+check "$res" "create"
+
+# -------- Test 8: unlink (whiteout) --------
+rm "$MNT/b.txt"
+sleep 0.5
+
+res="fail"
+[ -f "$UPPER/.wh.b.txt" ] && \
+[ ! -f "$MNT/b.txt" ] && res="ok"
+check "$res" "whiteout"
+
+# -------- Test 9: mkdir --------
+mkdir "$MNT/newdir"
+sleep 0.5
+
+res="fail"
+[ -d "$UPPER/newdir" ] && res="ok"
+check "$res" "mkdir"
+
+# -------- Test 10: rmdir --------
+mkdir "$MNT/temp"
+rmdir "$MNT/temp"
+sleep 0.5
+
+res="fail"
+[ ! -d "$UPPER/temp" ] && res="ok"
+check "$res" "rmdir"
+
+# -------- Test 11: truncate --------
+truncate -s 2 "$MNT/a.txt"
+sleep 0.5
+
+res="fail"
+size=$(stat -c%s "$UPPER/a.txt")
+[ "$size" -eq 2 ] && res="ok"
+check "$res" "truncate"
+
+# -------- Test 12: whiteout hidden from readdir --------
+res="fail"
+ls "$MNT" | grep -q "b.txt" && res="found"
+[ "$res" != "found" ] && res="ok" || res="fail"
+check "$res" "whiteout hidden"
+
+echo ""
+echo "======================================"
+echo "RESULT: $PASS passed, $FAIL failed"
+echo "======================================"
