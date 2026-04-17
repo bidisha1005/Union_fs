@@ -94,27 +94,3 @@ If `/dev/fuse` is missing, WSL2 FUSE is not enabled. In that case,
 switch to using the VirtualBox VM instead for this project.
 
 If it exists, proceed normally — all commands are the same.
-
-## Git workflow for the team
-
-```bash
-# M1: create repo on GitHub, push initial scaffold
-git init && git remote add origin <URL>
-git push -u origin main
-
-# M2, W1, W2: clone
-git clone <URL>
-cd mini_unionfs
-
-# Each member: work on your own branch
-git checkout -b feature/your-name
-# ... make changes ...
-git add . && git commit -m "describe what you did"
-git push origin feature/your-name
-
-# M1: merge everyone's branches at the end
-git merge feature/m2
-git merge feature/w1
-git merge feature/w2
-git push origin main
-```
